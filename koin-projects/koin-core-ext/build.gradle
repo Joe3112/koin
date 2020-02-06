@@ -5,9 +5,9 @@ description = 'Koin - simple dependency injection for Kotlin - ' + archivesBaseN
 
 dependencies {
     // Koin
-    api project(":koin-core")
-
-    testImplementation project(":koin-test")
+    compile project(":koin-core")
+    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+    testCompile project(":koin-test")
 }
 
 apply from: '../gradle/publish-mavenCentral.gradle'

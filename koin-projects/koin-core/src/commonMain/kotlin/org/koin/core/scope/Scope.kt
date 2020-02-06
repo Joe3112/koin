@@ -34,7 +34,7 @@ import kotlin.jvm.JvmOverloads
 import kotlin.reflect.KClass
 
 internal class ScopeState(koin: Koin, scope: Scope) {
-    internal var _linkedScope: List<Scope> = emptyList()
+    internal val _linkedScope: MutableList<Scope> = arrayListOf()
     internal val _instanceRegistry: InstanceRegistry = InstanceRegistry(koin, scope)
     internal val _callbacks: MutableList<ScopeCallback> = arrayListOf<ScopeCallback>()
     internal var _closed: Boolean = false
@@ -46,14 +46,41 @@ data class Scope(
         val _koin: Koin
 ) {
     internal val scopeState = MainIsolatedState(ScopeState(_koin, this))
+    val _linkedScope: MutableList<Scope>
+        get() = scopeState.value._linkedScope
     val _instanceRegistry: InstanceRegistry
         get() = scopeState.value._instanceRegistry
     val closed: Boolean
         get() = scopeState.value._closed
 
-    internal fun create(rootScope: Scope? = null) {
-        scopeState.value._instanceRegistry.create(_scopeDefinition.definitions)
-        rootScope?.let { scopeState.value._linkedScope = listOf(it) }
+    internal fun create(links: List<Scope>) {
+        _instanceRegistry.create(_scopeDefinition.definitions)
+        _linkedScope.addAll(links)
+    }
+
+    /**
+     * Add parent Scopes to allow instance resolution
+     * i.e: linkTo(scopeC) - allow to resolve instance to current scope and scopeC
+     *
+     * @param scopes - Scopes to link with
+     */
+    fun linkTo(vararg scopes: Scope) {
+        if (!_scopeDefinition.isRoot) {
+            _linkedScope.addAll(scopes)
+        } else {
+            error("Can't add scope link to a root scope")
+        }
+    }
+
+    /**
+     * Remove linked scope
+     */
+    fun unlink(vararg scopes: Scope) {
+        if (!_scopeDefinition.isRoot) {
+            _linkedScope.removeAll(scopes)
+        } else {
+            error("Can't remove scope link to a root scope")
+        }
     }
 
     /**
@@ -69,7 +96,7 @@ data class Scope(
             qualifier: Qualifier? = null,
             noinline parameters: ParametersDefinition? = null
     ): Lazy<T> =
-            lazy { get<T>(qualifier, parameters) }
+            lazy(LazyThreadSafetyMode.NONE) { get<T>(qualifier, parameters) }
 
     /**
      * Lazy inject a Koin instance if available
@@ -84,7 +111,7 @@ data class Scope(
             qualifier: Qualifier? = null,
             noinline parameters: ParametersDefinition? = null
     ): Lazy<T?> =
-            lazy { getOrNull<T>(qualifier, parameters) }
+            lazy(LazyThreadSafetyMode.NONE) { getOrNull<T>(qualifier, parameters) }
 
     /**
      * Get a Koin instance

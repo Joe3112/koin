@@ -22,6 +22,7 @@ import org.koin.core.logger.Logger
 import org.koin.core.module.Module
 import org.koin.core.parameter.ParametersDefinition
 import org.koin.core.qualifier.Qualifier
+import org.koin.core.qualifier.TypeQualifier
 import org.koin.core.registry.PropertyRegistry
 import org.koin.core.registry.ScopeRegistry
 import org.koin.core.scope.Scope
@@ -30,6 +31,7 @@ import org.koin.core.state.MainIsolatedState
 import org.koin.core.state.mainOrBlock
 import org.koin.core.state.value
 import kotlin.jvm.JvmOverloads
+import org.koin.ext.getScopeId
 import kotlin.reflect.KClass
 
 /**
@@ -203,12 +205,48 @@ class Koin {
     }
 
     /**
+     * Create a Scope instance
+     * @param scopeId
+     */
+    inline fun <reified T> createScope(scopeId: ScopeID): Scope {
+        val qualifier = TypeQualifier(T::class)
+        if (_logger.isAt(Level.DEBUG)) {
+            _logger.debug("!- create scope - id:'$scopeId' q:$qualifier")
+        }
+        return _scopeRegistry.createScope(scopeId, qualifier)
+    }
+
+    /**
+     * Create a Scope instance
+     * @param scopeDefinitionName
+     */
+    inline fun <reified T> createScope(): Scope {
+        val kClass = T::class
+        val scopeId = kClass.getScopeId()
+        val qualifier = TypeQualifier(kClass)
+        if (_logger.isAt(Level.DEBUG)) {
+            _logger.debug("!- create scope - id:'$scopeId' q:$qualifier")
+        }
+        return _scopeRegistry.createScope(scopeId, qualifier)
+    }
+
+    /**
      * Get or Create a Scope instance
      * @param scopeId
      * @param qualifier
      */
     fun getOrCreateScope(scopeId: ScopeID, qualifier: Qualifier): Scope = mainOrBlock {
         _scopeRegistry.getScopeOrNull(scopeId) ?: createScope(scopeId, qualifier)
+    }
+
+    /**
+     * Get or Create a Scope instance
+     * @param scopeId
+     * @param qualifier
+     */
+    inline fun <reified T> getOrCreateScope(scopeId: ScopeID): Scope {
+        val qualifier = TypeQualifier(T::class)
+        return _scopeRegistry.getScopeOrNull(scopeId) ?: createScope(scopeId, qualifier)
     }
 
     /**
@@ -259,6 +297,14 @@ class Koin {
      */
     fun <T : Any> setProperty(key: String, value: T) {
         mainOrBlock { _propertyRegistry.saveProperty(key, value) }
+    }
+
+    /**
+     * Delete a property
+     * @param key
+     */
+    fun deleteProperty(key: String) = mainOrBlock {
+        _propertyRegistry.deleteProperty(key)
     }
 
     /**

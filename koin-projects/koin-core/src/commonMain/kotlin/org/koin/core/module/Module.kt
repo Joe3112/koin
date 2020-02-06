@@ -17,6 +17,7 @@ package org.koin.core.module
 
 import org.koin.core.definition.*
 import org.koin.core.qualifier.Qualifier
+import org.koin.core.qualifier.TypeQualifier
 import org.koin.core.scope.ScopeDefinition
 import org.koin.dsl.ScopeDSL
 
@@ -27,13 +28,13 @@ import org.koin.dsl.ScopeDSL
  * @author Arnaud Giuliani
  */
 class Module(
-    val createAtStart: Boolean,
-    val override: Boolean
+        val createAtStart: Boolean,
+        val override: Boolean
 ) {
     val rootScope: ScopeDefinition = ScopeDefinition.rootDefinition()
     var isLoaded: Boolean = false
         internal set
-    internal val otherScopes = arrayListOf<ScopeDefinition>()
+    val otherScopes = arrayListOf<ScopeDefinition>()
 
     /**
      * Declare a group a scoped definition with a given scope qualifier
@@ -41,6 +42,15 @@ class Module(
      */
     fun scope(qualifier: Qualifier, scopeSet: ScopeDSL.() -> Unit) {
         val scopeDefinition = ScopeDefinition(qualifier)
+        ScopeDSL(scopeDefinition).apply(scopeSet)
+        otherScopes.add(scopeDefinition)
+    }
+
+    /**
+     * Class Typed Scope
+     */
+    inline fun <reified T> scope(scopeSet: ScopeDSL.() -> Unit) {
+        val scopeDefinition = ScopeDefinition(TypeQualifier(T::class))
         ScopeDSL(scopeDefinition).apply(scopeSet)
         otherScopes.add(scopeDefinition)
     }
@@ -69,7 +79,7 @@ class Module(
     }
 
     fun makeOptions(override: Boolean, createdAtStart: Boolean = false): Options =
-        Options(this.createAtStart || createdAtStart, this.override || override)
+            Options(this.createAtStart || createdAtStart, this.override || override)
 
     /**
      * Declare a Factory definition
@@ -90,6 +100,11 @@ class Module(
      * Help write list of Modules
      */
     operator fun plus(module: Module) = listOf(this, module)
+
+    /**
+     * Help write list of Modules
+     */
+    operator fun plus(modules: List<Module>) = listOf(this) + modules
 }
 
 /**

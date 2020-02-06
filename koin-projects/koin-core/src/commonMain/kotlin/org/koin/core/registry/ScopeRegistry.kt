@@ -134,7 +134,8 @@ import org.koin.core.scope.ScopeID
 
     private fun createScope(scopeId: ScopeID, scopeDefinition: ScopeDefinition): Scope {
         val scope = Scope(scopeId, scopeDefinition, _koin)
-        scope.create(_rootScope)
+        val links = _rootScope?.let { listOf(it) } ?: emptyList()
+        scope.create(links)
         return scope
     }
 
